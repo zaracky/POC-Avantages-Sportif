@@ -23,7 +23,7 @@ def compute_indemnites():
         WHERE e.est_eligible = TRUE
     """
     df = pd.read_sql(query, engine)
-    df["montant_rembourse"] = df["distance_km"] * TARIF_KM
+    df["montant_rembourse"] = df["distance_km"] * TARIF_KM.round(2)
     df.to_sql("indemnites", engine, if_exists="replace", index=False)
 
 # Définition du DAG
