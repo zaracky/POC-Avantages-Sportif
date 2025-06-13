@@ -2,6 +2,7 @@ version: '3.8'
 
 services:
 
+  # --- DATABASES ---
   postgres:
     image: postgres:15
     container_name: postgres
@@ -15,12 +16,23 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter
+    container_name: postgres_exporter
+    environment:
+      DATA_SOURCE_NAME: "postgresql://user:password@postgres:5432/sportdb?sslmode=disable"
+    ports:
+      - "9187:9187"
+    depends_on:
+      - postgres
+
   adminer:
     image: adminer
     restart: always
     ports:
       - 8080:8080
 
+  # --- AIRFLOW ---
   airflow-init:
     build:
       context: .
@@ -56,6 +68,9 @@ services:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:password@postgres:5432/sportdb
       - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
+      - AIRFLOW__METRICS__STATSD_ON=True
+      - AIRFLOW__METRICS__STATSD_HOST=airflow-statsd
+      - AIRFLOW__METRICS__STATSD_PORT=8125
     volumes:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
@@ -76,12 +91,23 @@ services:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:password@postgres:5432/sportdb
       - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
+      - AIRFLOW__METRICS__STATSD_ON=True
+      - AIRFLOW__METRICS__STATSD_HOST=airflow-statsd
+      - AIRFLOW__METRICS__STATSD_PORT=8125
     volumes:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
       - ./great_expectations:/opt/airflow/great_expectations
     command: scheduler
 
+  airflow-statsd:
+    image: prom/statsd-exporter
+    container_name: airflow_statsd
+    ports:
+      - "9102:9102"
+    command: --statsd.listen-udp=:8125 --web.listen-address=:9102
+
+  # --- BATCH PROCESSING ---
   enrich_rh:
     build:
       context: .
@@ -103,6 +129,41 @@ services:
     stdin_open: true
     tty: true
     command: sleep infinity
+
+  # --- MONITORING ---
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - postgres-exporter
+      - airflow-statsd
+      - cadvisor
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    depends_on:
+      - prometheus
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:latest
+    container_name: cadvisor
+    ports:
+      - "8082:8080"
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
 
 volumes:
   postgres_data:
