@@ -1,4 +1,4 @@
-# Sport Data Monitoring — POC Technique
+# Sport Avantages — POC Technique
 
 Ce projet est le **Proof of Concept** pour une solution de **suivi d'activité sportive des employés** de Sport Data Solution. L'objectif est de mettre en place un pipeline de données robuste et monitoré, afin de tester l'attribution d'avantages à ceux ayant une pratique sportive régulière.
 
@@ -31,23 +31,23 @@ Ce projet est le **Proof of Concept** pour une solution de **suivi d'activité s
 
 ## Architecture actuelle du projet
 
-📦 p12-project/
-├── dags/ → DAG Airflow de validation
-├── data/ → Fichiers de données (volumés, ignorés par Git)
-├── great_expectations/ → Configuration de GE
-├── grafana/
-│ ├── dashboards/ → JSON des dashboards PostgreSQL & Airflow
-│ └── provisioning/ → Datasources & dashboards auto-provisionnés
-├── monitoring/
-│ └── prometheus.yml → Scraping config pour Prometheus
-├── airflow_exporter.py → Exporter Prometheus custom pour Airflow
-├── Dockerfile.airflow
-├── Dockerfile.greatexp
-├── Dockerfile.exporter → Dockerfile pour l'exporter Airflow
-├── docker-compose.yml
-├── init.sql → Initialisation de la BDD PostgreSQL
-├── .env → Secrets d'environnement (non versionnés)
-└── .gitignore
+    📦 p12-project/
+        ├── dags/ → DAG Airflow de validation
+        ├── data/ → Fichiers de données (volumés, ignorés par Git)
+        ├── great_expectations/ → Configuration de GE
+        ├── grafana/
+            │ ├── dashboards/ → JSON des dashboards PostgreSQL & Airflow
+            │ └── provisioning/ → Datasources & dashboards auto-provisionnés
+        ├── monitoring/
+            │ └── prometheus.yml → Scraping config pour Prometheus
+        ├── airflow_exporter.py → Exporter Prometheus custom pour Airflow
+        ├── Dockerfile.airflow
+        ├── Dockerfile.greatexp
+        ├── Dockerfile.exporter → Dockerfile pour l'exporter Airflow
+        ├── docker-compose.yml
+        ├── init.sql → Initialisation de la BDD PostgreSQL
+        ├── .env → Secrets d'environnement (non versionnés)
+        └── .gitignore
 
 
 ##  Lancer le projet
