@@ -1,5 +1,6 @@
 version: '3.8'
 
+
 services:
 
   # --- DATABASES ---
@@ -16,6 +17,41 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+
+
+  # --- MONITORING ---
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - ./grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter
     container_name: postgres_exporter
@@ -26,11 +62,26 @@ services:
     depends_on:
       - postgres
 
-  adminer:
-    image: adminer
-    restart: always
+  airflow-exporter:
+    build:
+      context: .
+      dockerfile: Dockerfile.airflow_exporter
+    container_name: airflow_exporter
     ports:
-      - 8080:8080
+      - "9112:9112"
+    environment:
+      - AIRFLOW_URL=http://airflow-webserver:8080
+      - AIRFLOW_USER=admin
+      - AIRFLOW_PASSWORD=admin
+    depends_on:
+      - airflow-webserver
+
+  node-exporter:
+    image: prom/node-exporter
+    container_name: node_exporter
+    ports:
+      - "9100:9100"
+
 
   # --- AIRFLOW ---
   airflow-init:
@@ -44,22 +95,24 @@ services:
       - AIRFLOW__CORE__EXECUTOR=LocalExecutor
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:password@postgres:5432/sportdb
       - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
-    entrypoint: >
-      bash -c "
-        airflow db init &&
-        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com
-      "
+      - AIRFLOW__METRICS__STATSD_ON=True
+      - AIRFLOW__METRICS__STATSD_HOST=airflow-exporter
+      - AIRFLOW__METRICS__STATSD_PORT=9125
     volumes:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
       - ./great_expectations:/opt/airflow/great_expectations
     restart: on-failure
+    entrypoint: >
+      bash -c "
+        airflow db init &&
+        airflow users create --username admin --password admin --firstname Admin --lastname User --role Admin --email admin@example.com
+      "
 
   airflow-webserver:
     build:
       context: .
       dockerfile: Dockerfile.airflow
-    restart: always
     depends_on:
       - postgres
       - airflow-init
@@ -69,8 +122,8 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:password@postgres:5432/sportdb
       - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
       - AIRFLOW__METRICS__STATSD_ON=True
-      - AIRFLOW__METRICS__STATSD_HOST=airflow-statsd
-      - AIRFLOW__METRICS__STATSD_PORT=8125
+      - AIRFLOW__METRICS__STATSD_HOST=airflow-exporter
+      - AIRFLOW__METRICS__STATSD_PORT=9125
     volumes:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
@@ -83,7 +136,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.airflow
-    restart: always
     depends_on:
       - airflow-webserver
     env_file: .env
@@ -92,22 +144,14 @@ services:
       - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://user:password@postgres:5432/sportdb
       - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW_SECRET_KEY}
       - AIRFLOW__METRICS__STATSD_ON=True
-      - AIRFLOW__METRICS__STATSD_HOST=airflow-statsd
-      - AIRFLOW__METRICS__STATSD_PORT=8125
+      - AIRFLOW__METRICS__STATSD_HOST=airflow-exporter
+      - AIRFLOW__METRICS__STATSD_PORT=9125
     volumes:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
       - ./great_expectations:/opt/airflow/great_expectations
     command: scheduler
 
-  airflow-statsd:
-    image: prom/statsd-exporter
-    container_name: airflow_statsd
-    ports:
-      - "9102:9102"
-    command: --statsd.listen-udp=:8125 --web.listen-address=:9102
-
-  # --- BATCH PROCESSING ---
   enrich_rh:
     build:
       context: .
@@ -130,40 +174,6 @@ services:
     tty: true
     command: sleep infinity
 
-  # --- MONITORING ---
-  prometheus:
-    image: prom/prometheus
-    container_name: prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
-    depends_on:
-      - postgres-exporter
-      - airflow-statsd
-      - cadvisor
-
-  grafana:
-    image: grafana/grafana
-    container_name: grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    depends_on:
-      - prometheus
-
-  cadvisor:
-    image: gcr.io/cadvisor/cadvisor:latest
-    container_name: cadvisor
-    ports:
-      - "8082:8080"
-    volumes:
-      - /:/rootfs:ro
-      - /var/run:/var/run:ro
-      - /sys:/sys:ro
-      - /var/lib/docker/:/var/lib/docker:ro
-
 volumes:
   postgres_data:
+  grafana_data:
