@@ -1,18 +1,38 @@
+checks for rh:
+  - row_count > 0
+  - missing_count(id_salarie) = 0
+  - missing_count(nom) = 0
+  - missing_count(prenom) = 0
+  - duplicate_count(id_salarie) = 0
+  - values in sport_pratique_declare must be in [true, false]
+
 checks for activites:
   - row_count > 0
-  - missing_count(id) = 0
-  - duplicate_count(id) = 0
+  - missing_count(id_salarie) = 0
+  - missing_count(distance_m) = 0
+  - missing_count(duree_s) = 0
+  - missing_count(date_debut) = 0
+  - min(distance_m) > 0
+  - max(distance_m) < 100000
+  - min(duree_s) > 0
+  - max(duree_s) < 21600     # 6 heures max
+  - freshness(date_debut) < 32d
+  - reference integrity id_salarie in activites must exist in rh.id_salarie
 
 checks for eligibilite:
   - row_count > 0
-  - missing_count(person_id) = 0
-  - invalid_count(eligibility_flag) = 0: [0, 1]
+  - missing_count(id_salarie) = 0
+  - missing_count(est_eligible) = 0
+  - for each row:
+      - if est_eligible = true then:
+          - nb_activites >= 10
+          - distance_totale_m >= 20000
+          - duree_totale_s >= 7200
 
 checks for indemnites:
   - row_count > 0
-  - missing_count(montant) = 0
-  - invalid_count(montant) = 0: > 0
-
-checks for rapport:
-  - row_count > 0
-  - missing_count(date_rapport) = 0
+  - missing_count(id_salarie) = 0
+  - min(montant_rembourse) >= 0
+  - avg(montant_rembourse) >= 0
+  - for each row:
+      - est_eligible = true
