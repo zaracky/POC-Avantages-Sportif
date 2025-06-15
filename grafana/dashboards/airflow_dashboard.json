@@ -1,0 +1,98 @@
+{
+  "id": null,
+  "title": "Airflow - Supervision complète",
+  "timezone": "browser",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "30s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Nombre de DAGs actifs",
+      "id": 1,
+      "datasource": "Prometheus",
+      "gridPos": { "h": 3, "w": 6, "x": 0, "y": 0 },
+      "targets": [
+        {
+          "expr": "count(airflow_dag_status{state=\"active\"} == 1)",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "type": "stat",
+      "title": "Nombre de DAGs en pause",
+      "id": 2,
+      "datasource": "Prometheus",
+      "gridPos": { "h": 3, "w": 6, "x": 6, "y": 0 },
+      "targets": [
+        {
+          "expr": "count(airflow_dag_status{state=\"paused\"} == 1)",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "type": "piechart",
+      "title": "Répartition des exécutions par statut",
+      "id": 3,
+      "datasource": "Prometheus",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 3 },
+      "targets": [
+        {
+          "expr": "sum by (status) (airflow_dag_run_status)",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "type": "barchart",
+      "title": "Nombre de runs par DAG",
+      "id": 4,
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 9 },
+      "targets": [
+        {
+          "expr": "sum by (dag_id) (airflow_dag_run_status)",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "type": "time_series",
+      "title": "Évolution des runs (success)",
+      "id": 5,
+      "datasource": "Prometheus",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 17 },
+      "targets": [
+        {
+          "expr": "airflow_dag_run_status{status=\"success\"}",
+          "refId": "E"
+        }
+      ]
+    },
+    {
+      "type": "table",
+      "title": "DAGs & dernier état",
+      "id": 6,
+      "datasource": "Prometheus",
+      "gridPos": { "h": 6, "w": 12, "x": 0, "y": 25 },
+      "targets": [
+        {
+          "expr": "topk(1, airflow_dag_run_status)",
+          "refId": "F"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {},
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true
+      }
+    }
+  ]
+}
