@@ -1,0 +1,18 @@
+checks for activites:
+  - row_count > 0
+  - missing_count(id) = 0
+  - duplicate_count(id) = 0
+
+checks for eligibilite:
+  - row_count > 0
+  - missing_count(person_id) = 0
+  - invalid_count(eligibility_flag) = 0: [0, 1]
+
+checks for indemnites:
+  - row_count > 0
+  - missing_count(montant) = 0
+  - invalid_count(montant) = 0: > 0
+
+checks for rapport:
+  - row_count > 0
+  - missing_count(date_rapport) = 0
