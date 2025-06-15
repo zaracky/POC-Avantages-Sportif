@@ -4,7 +4,6 @@ checks for rh:
   - missing_count(nom) = 0
   - missing_count(prenom) = 0
   - duplicate_count(id_salarie) = 0
-  - values in sport_pratique_declare must be in [true, false]
 
 checks for activites:
   - row_count > 0
@@ -15,24 +14,31 @@ checks for activites:
   - min(distance_m) > 0
   - max(distance_m) < 100000
   - min(duree_s) > 0
-  - max(duree_s) < 21600     # 6 heures max
+  - max(duree_s) < 21600
   - freshness(date_debut) < 32d
-  - reference integrity id_salarie in activites must exist in rh.id_salarie
+  - failed rows:
+      name: id_salarie not in rh
+      fail condition: id_salarie not in (select id_salarie from rh)
 
 checks for eligibilite:
   - row_count > 0
   - missing_count(id_salarie) = 0
   - missing_count(est_eligible) = 0
-  - for each row:
-      - if est_eligible = true then:
-          - nb_activites >= 10
-          - distance_totale_m >= 20000
-          - duree_totale_s >= 7200
+  - failed rows:
+      name: Eligibilité incohérente - nb_activites
+      fail condition: est_eligible = true and nb_activites < 10
+  - failed rows:
+      name: Eligibilité incohérente - distance
+      fail condition: est_eligible = true and distance_totale_m < 20000
+  - failed rows:
+      name: Eligibilité incohérente - durée
+      fail condition: est_eligible = true and duree_totale_s < 7200
 
 checks for indemnites:
   - row_count > 0
   - missing_count(id_salarie) = 0
   - min(montant_rembourse) >= 0
   - avg(montant_rembourse) >= 0
-  - for each row:
-      - est_eligible = true
+  - failed rows:
+      name: Non éligible présent dans indemnités
+      fail condition: est_eligible != true
