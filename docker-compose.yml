@@ -165,16 +165,6 @@ services:
       - postgres
     restart: "no"
 
-  great_expectations:
-    build:
-      context: .
-      dockerfile: Dockerfile.greatexp
-    volumes:
-      - ./great_expectations:/opt/airflow/great_expectations
-      - ./data:/app/data
-    stdin_open: true
-    tty: true
-    command: sleep infinity
 
 volumes:
   postgres_data:
