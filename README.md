@@ -11,9 +11,13 @@ Ce projet est le **Proof of Concept** pour une solution de **suivi d'activité s
 > 
 > Le système doit permettre :
 > - L'intégration de fichiers d'activité
-> - L'automatisation des calculs
-> - Le contrôle qualité des données
 > - Le monitoring continu (Airflow, PostgreSQL)
+> - Capture des changements en base (CDC) avec Debezium + Kafka
+> - Déclenchement automatique de DAGs Airflow selon les changements
+> - Calcul de l’éligibilité à un remboursement
+> - Génération des indemnités
+> - Validation de la qualité des données avec Soda
+> - Envoi de notifications personnalisées sur Slack
 
 ---
 
@@ -26,27 +30,28 @@ Ce projet est le **Proof of Concept** pour une solution de **suivi d'activité s
 | **Great Expectations** | Contrôle qualité automatisé des fichiers chargés              |
 | **Prometheus**  | Collecte de métriques des services (Airflow, PostgreSQL, système)   |
 | **Grafana**     | Visualisation des indicateurs via dashboards                        |
+| **Debezium + Redpanda**     | Visualisation des indicateurs via dashboards                        |
 
 ---
 
 ## Architecture actuelle du projet
 
-    📦 p12-project/
-        ├── dags/ → DAG Airflow de validation
-        ├── data/ → Fichiers de données (volumés, ignorés par Git)
-        ├── great_expectations/ → Configuration de GE
+     p12-project/
+        ├── dags/ → DAG Airflow
+        ├── data/ → Fichiers de données 
+        ├── soda/ →  Configurations de qualité de données
         ├── grafana/
             │ ├── dashboards/ → JSON des dashboards PostgreSQL & Airflow
             │ └── provisioning/ → Datasources & dashboards auto-provisionnés
         ├── monitoring/
             │ └── prometheus.yml → Scraping config pour Prometheus
+        ├── kafka-listener/ → Consommateur Kafka avec Slack
         ├── airflow_exporter.py → Exporter Prometheus custom pour Airflow
         ├── Dockerfile.airflow
-        ├── Dockerfile.greatexp
-        ├── Dockerfile.exporter → Dockerfile pour l'exporter Airflow
+        ├── Dockerfile.exporter 
         ├── docker-compose.yml
         ├── init.sql → Initialisation de la BDD PostgreSQL
-        ├── .env → Secrets d'environnement (non versionnés)
+        ├── .env → Secrets d'environnement 
         └── .gitignore
 
 
@@ -69,7 +74,19 @@ Ce projet est le **Proof of Concept** pour une solution de **suivi d'activité s
 | **Adminer**     | http://localhost:8080	PostgreSQL login           |
 | **Grafana** | http://localhost:3000	admin / admin             |
 | **Prometheus**  | http://localhost:9090   |
-| **Grafana**     | Visualisation des indicateurs via dashboards                        |
+| **Redpanda**     |  http://localhost:8082                        |
 
 
+## Tests
+- Insérer une activité manuellement dans PostgreSQL.
 
+- Vérifier que les DAGs sont déclenchés.
+
+- Confirmer l'envoi Slack si l'activité est valide.
+
+- Exécuter validate_data_quality pour checker les données.
+
+##  Sécurité
+Ajoutez un fichier .env à la racine :
+
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/XXXXX/XXXXX/XXXXX
