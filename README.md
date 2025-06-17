@@ -30,7 +30,7 @@ Ce projet est le **Proof of Concept** pour une solution de **suivi d'activité s
 | **Great Expectations** | Contrôle qualité automatisé des fichiers chargés              |
 | **Prometheus**  | Collecte de métriques des services (Airflow, PostgreSQL, système)   |
 | **Grafana**     | Visualisation des indicateurs via dashboards                        |
-| **Debezium + Redpanda**     | Visualisation des indicateurs via dashboards                        |
+| **Debezium + Redpanda**     | Capture des changements en temps réel dans PostgreSQL et diffusion des événements vers Redpanda pour déclencher automatiquement les traitements Airflow et les notifications Slack                       |
 
 ---
 
