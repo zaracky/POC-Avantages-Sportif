@@ -46,9 +46,11 @@ Ce projet est le **Proof of Concept** pour une solution de **suivi d'activité s
         ├── monitoring/
             │ └── prometheus.yml → Scraping config pour Prometheus
         ├── kafka-listener/ → Consommateur Kafka avec Slack
+        ├── scripts/
         ├── airflow_exporter.py → Exporter Prometheus custom pour Airflow
         ├── Dockerfile.airflow
-        ├── Dockerfile.exporter 
+        ├── Dockerfile.enrich
+        ├── Dockerfile.airflow_exporter 
         ├── docker-compose.yml
         ├── init.sql → Initialisation de la BDD PostgreSQL
         ├── .env → Secrets d'environnement 
