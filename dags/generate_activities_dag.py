@@ -1,50 +1,67 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-from datetime import datetime
-import pandas as pd
+from datetime import datetime, timedelta
+import psycopg2
 import random
-from datetime import timedelta
-from sqlalchemy import create_engine
 
-def generate_activities():
-    engine = create_engine("postgresql+psycopg2://user:password@postgres:5432/sportdb")
+ACTIVITES = ["marche", "vélo", "course", "yoga", "natation"]
 
-    ACTIVITES = ["marche", "vélo", "course", "yoga", "natation"]
+def generer_activites():
+    conn = psycopg2.connect(
+        host="postgres",
+        database="sportdb",
+        user="user",
+        password="password"
+    )
+    cursor = conn.cursor()
 
-    def generer_une_activite(id_salarie):
+    cursor.execute("SELECT id_salarie FROM rh")
+    salaries = cursor.fetchall()
+
+    if not salaries:
+        print("⚠️ Aucun salarié trouvé dans la table rh.")
+        return
+
+    for _ in range(300):
+        id_salarie = random.choice(salaries)[0]
+        date_debut = datetime.now() - timedelta(days=random.randint(0, 365))
         type_activite = random.choice(ACTIVITES)
-        distance = random.randint(1000, 10000)
-        duree = random.randint(600, 3600)
-        date = datetime.now() - timedelta(days=random.randint(1, 30))
-        return {
-            "id_salarie": id_salarie,
-            "date_debut": date.date(),
-            "type": type_activite,
-            "distance_m": distance,
-            "duree_s": duree,
-            "commentaire": ""
-        }
+        distance_m = random.randint(1000, 15000)
+        duree_s = random.randint(600, 7200)
+        commentaire = random.choice([
+            "Super sortie !", "Belle perf", "Reprise du sport :)",
+            "Jambes lourdes", "Top météo aujourd’hui", ""
+        ])
 
-    df_rh = pd.read_sql("SELECT id_salarie FROM rh WHERE sport_pratique_declare = TRUE", engine)
+        cursor.execute(
+            """
+            INSERT INTO activites (
+                id_salarie, date_debut, type, distance_m, duree_s, commentaire, source
+            ) VALUES (%s, %s, %s, %s, %s, %s, 'auto')
+            """,
+            (id_salarie, date_debut, type_activite, distance_m, duree_s, commentaire)
+        )
 
-    activites = []
-    for _, row in df_rh.iterrows():
-        for _ in range(random.randint(5, 15)):
-            activites.append(generer_une_activite(row["id_salarie"]))
+    conn.commit()
+    cursor.close()
+    conn.close()
+    print(" Activités générées automatiquement.")
 
-    df = pd.DataFrame(activites)
-    df.to_sql("activites", engine, if_exists="append", index=False)
+default_args = {
+    'owner': 'airflow',
+    'start_date': datetime(2023, 1, 1),
+    'retries': 1,
+    'retry_delay': timedelta(minutes=1)
+}
 
 with DAG(
-    dag_id="generate_activities",
-    description="Générer des activités sportives fictives pour les salariés",
-    start_date=datetime(2023, 1, 1),
+    dag_id='generate_activities',
+    default_args=default_args,
     schedule_interval=None,
     catchup=False,
-    tags=["sport", "activities"]
+    is_paused_upon_creation=False,
 ) as dag:
-
-    generate_activities_task = PythonOperator(
-        task_id="generate_activities",
-        python_callable=generate_activities
+    generate = PythonOperator(
+        task_id='generate_activities',
+        python_callable=generer_activites
     )
