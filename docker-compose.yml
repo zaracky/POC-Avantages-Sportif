@@ -1,9 +1,8 @@
 version: '3.8'
 
-
 services:
 
-  # --- DATABASES ---
+  # === POSTGRES ===
   postgres:
     image: postgres:15
     container_name: postgres
@@ -16,6 +15,8 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    command: >
+      postgres -c wal_level=logical -c max_replication_slots=4 -c max_wal_senders=4
 
   adminer:
     image: adminer
@@ -23,9 +24,7 @@ services:
     ports:
       - 8080:8080
 
-
-  # --- MONITORING ---
-
+  # === MONITORING ===
   prometheus:
     image: prom/prometheus
     container_name: prometheus
@@ -82,8 +81,7 @@ services:
     ports:
       - "9100:9100"
 
-
-  # --- AIRFLOW ---
+  # === AIRFLOW ===
   airflow-init:
     build:
       context: .
@@ -125,18 +123,17 @@ services:
       - AIRFLOW__METRICS__STATSD_HOST=airflow-exporter
       - AIRFLOW__METRICS__STATSD_PORT=9125
       - AIRFLOW__API__AUTH_BACKEND=airflow.api.auth.backend.basic_auth
-
     volumes:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
-      - ./great_expectations:/opt/airflow/great_expectations
+      - ./soda:/opt/airflow/soda
     ports:
       - "8081:8080"
     command: webserver
 
   airflow-scheduler:
     build:
-      context: .
+      context: . 
       dockerfile: Dockerfile.airflow
     depends_on:
       - airflow-webserver
@@ -151,7 +148,7 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
-      - ./great_expectations:/opt/airflow/great_expectations
+      - ./soda:/opt/airflow/soda
     command: scheduler
 
   enrich_rh:
@@ -165,6 +162,88 @@ services:
       - postgres
     restart: "no"
 
+  # === DEBEZIUM + REDPANDA ===
+  redpanda:
+    image: redpandadata/redpanda:v23.1.10
+    container_name: redpanda
+    command:
+      - redpanda
+      - start
+      - --overprovisioned
+      - --smp 1
+      - --memory 1G
+      - --reserve-memory 0M
+      - --node-id 0
+      - --check=false
+      - --kafka-addr PLAINTEXT://0.0.0.0:9092,OUTSIDE://0.0.0.0:29092
+      - --advertise-kafka-addr PLAINTEXT://redpanda:9092,OUTSIDE://localhost:29092
+    ports:
+      - "9092:9092"     # Pour les conteneurs internes
+      - "29092:29092"   # Pour ton host Windows (tests extérieurs)
+
+
+  redpanda-console:
+    image: docker.redpanda.com/redpandadata/console:latest
+    container_name: redpanda_console
+    depends_on:
+      - redpanda
+    ports:
+      - "8082:8080"  # <-- C'est l'interface web
+    environment:
+      - KAFKA_BROKERS=redpanda:9092
+
+  connect:
+    image: debezium/connect:2.6
+    container_name: debezium
+    depends_on:
+      - postgres
+      - redpanda
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: redpanda:9092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: debezium_config
+      OFFSET_STORAGE_TOPIC: debezium_offsets
+      STATUS_STORAGE_TOPIC: debezium_statuses
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_REST_ADVERTISED_HOST_NAME: connect
+      CONNECT_PLUGIN_PATH: /kafka/connect,/debezium-plugins
+
+  register-debezium:
+    image: curlimages/curl
+    container_name: register_debezium
+    depends_on:
+      - connect
+    volumes:
+      - ./scripts:/scripts
+    entrypoint: [ "sh", "/scripts/register-debezium.sh" ]
+
+
+
+  # === KAFKA CONSUMER TRIGGER AIRFLOW ===
+  kafka-listener:
+    build:
+      context: ./kafka-listener
+    container_name: kafka-listener
+    depends_on:
+      - redpanda
+      - connect
+      - airflow-webserver
+    environment:
+      - KAFKA_TOPIC=pgserver1.public.activites
+      - KAFKA_BOOTSTRAP_SERVERS=redpanda:9092
+      - AIRFLOW_API=http://airflow-webserver:8080/api/v1/dags
+      - AIRFLOW_USER=admin
+      - AIRFLOW_PASSWORD=admin
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}  # ✅ Injectée depuis .env
+    volumes:
+      - ./kafka-listener:/app
+      - ./.env:/app/.env                         
+    command: python /app/listener.py             
+    env_file:
+      - .env
 
 volumes:
   postgres_data:
