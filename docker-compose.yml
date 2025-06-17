@@ -99,7 +99,6 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
-      - ./great_expectations:/opt/airflow/great_expectations
     restart: on-failure
     entrypoint: >
       bash -c "
