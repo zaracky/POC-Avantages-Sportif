@@ -22,7 +22,7 @@ def generer_activites():
         print("⚠️ Aucun salarié trouvé dans la table rh.")
         return
 
-    for _ in range(300):
+    for _ in range(600):
         id_salarie = random.choice(salaries)[0]
         date_debut = datetime.now() - timedelta(days=random.randint(0, 365))
         type_activite = random.choice(ACTIVITES)
