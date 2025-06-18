@@ -1,0 +1,15 @@
+# Dockerfile.airflow_exporter
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Installer les dépendances
+RUN apt-get update && apt-get install -y curl \
+    && pip install --no-cache-dir flask prometheus_client requests
+
+
+# Copier le script
+COPY airflow_exporter.py .
+
+# Lancer le serveur Flask
+CMD ["python", "airflow_exporter.py"]

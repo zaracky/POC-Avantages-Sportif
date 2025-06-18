@@ -1,0 +1,26 @@
+FROM bitnami/spark:3.5
+
+USER root
+
+# Installer pip + delta-spark côté Python
+RUN apt-get update && \
+    apt-get install -y python3-pip curl && \
+    pip3 install --upgrade pip && \
+    pip3 install delta-spark==3.1.0 && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV DELTA_VERSION=3.1.0
+ENV SPARK_HOME=/opt/bitnami/spark
+
+# Télécharger les JAR nécessaires
+RUN curl -L -o ${SPARK_HOME}/jars/delta-spark_2.12-${DELTA_VERSION}.jar \
+    https://repo1.maven.org/maven2/io/delta/delta-spark_2.12/${DELTA_VERSION}/delta-spark_2.12-${DELTA_VERSION}.jar && \
+    curl -L -o ${SPARK_HOME}/jars/delta-storage-${DELTA_VERSION}.jar \
+    https://repo1.maven.org/maven2/io/delta/delta-storage/${DELTA_VERSION}/delta-storage-${DELTA_VERSION}.jar && \
+    curl -L -o ${SPARK_HOME}/jars/postgresql-42.7.3.jar \
+    https://jdbc.postgresql.org/download/postgresql-42.7.3.jar
+
+# Créer dossier pour tes scripts Spark
+RUN mkdir -p /opt/spark-apps
+
+USER 1001

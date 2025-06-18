@@ -1,0 +1,10 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+COPY enrich_rh.py .
+COPY data ./data
+
+RUN pip install --no-cache-dir pandas requests python-dotenv openpyxl
+
+CMD ["python", "enrich_rh.py"]

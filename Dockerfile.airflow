@@ -1,0 +1,10 @@
+FROM apache/airflow:2.7.2
+
+# Installer Great Expectations avec le bon utilisateur
+USER airflow
+
+#RUN pip install --no-cache-dir "great_expectations>=0.17.20"
+RUN pip install great_expectations==0.17.16
+RUN pip install --no-cache-dir soda-core soda-core-postgres
+
+
