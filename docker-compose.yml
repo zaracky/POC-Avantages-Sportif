@@ -17,12 +17,16 @@ services:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     command: >
       postgres -c wal_level=logical -c max_replication_slots=4 -c max_wal_senders=4
+    networks:
+      - airflow_net
 
   adminer:
     image: adminer
     restart: always
     ports:
       - 8080:8080
+    networks:
+      - airflow_net
 
   # === MONITORING ===
   prometheus:
@@ -34,6 +38,8 @@ services:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - airflow_net
 
   grafana:
     image: grafana/grafana
@@ -50,6 +56,8 @@ services:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
       - GF_USERS_ALLOW_SIGN_UP=false
+    networks:
+      - airflow_net
 
   postgres-exporter:
     image: prometheuscommunity/postgres-exporter
@@ -60,6 +68,8 @@ services:
       - "9187:9187"
     depends_on:
       - postgres
+    networks:
+      - airflow_net
 
   airflow-exporter:
     build:
@@ -74,12 +84,16 @@ services:
       - AIRFLOW_PASSWORD=admin
     depends_on:
       - airflow-webserver
+    networks:
+      - airflow_net
 
   node-exporter:
     image: prom/node-exporter
     container_name: node_exporter
     ports:
       - "9100:9100"
+    networks:
+      - airflow_net
 
   # === AIRFLOW ===
   airflow-init:
@@ -99,7 +113,10 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
+      - ./spark-jobs:/opt/airflow/spark-jobs
     restart: on-failure
+    networks:
+      - airflow_net
     entrypoint: >
       bash -c "
         airflow db init &&
@@ -126,9 +143,14 @@ services:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
       - ./soda:/opt/airflow/soda
+      - /var/run/docker.sock:/var/run/docker.sock  
+      - ./spark-jobs:/opt/airflow/spark-jobs
+
     ports:
       - "8081:8080"
     command: webserver
+    networks:
+      - airflow_net
 
   airflow-scheduler:
     build:
@@ -148,7 +170,11 @@ services:
       - ./dags:/opt/airflow/dags
       - ./data:/opt/airflow/data
       - ./soda:/opt/airflow/soda
+      - /var/run/docker.sock:/var/run/docker.sock  
+      - ./spark-jobs:/opt/airflow/spark-jobs
     command: scheduler
+    networks:
+      - airflow_net
 
   enrich_rh:
     build:
@@ -160,6 +186,8 @@ services:
     depends_on:
       - postgres
     restart: "no"
+    networks:
+      - airflow_net
 
   # === DEBEZIUM + REDPANDA ===
   redpanda:
@@ -179,6 +207,8 @@ services:
     ports:
       - "9092:9092"     # Pour les conteneurs internes
       - "29092:29092"   # Pour ton host Windows (tests extérieurs)
+    networks:
+      - airflow_net
 
 
   redpanda-console:
@@ -190,6 +220,8 @@ services:
       - "8082:8080"  # <-- C'est l'interface web
     environment:
       - KAFKA_BROKERS=redpanda:9092
+    networks:
+      - airflow_net
 
   connect:
     image: debezium/connect:2.6
@@ -209,6 +241,8 @@ services:
       CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
       CONNECT_REST_ADVERTISED_HOST_NAME: connect
       CONNECT_PLUGIN_PATH: /kafka/connect,/debezium-plugins
+    networks:
+      - airflow_net
 
   register-debezium:
     image: curlimages/curl
@@ -218,6 +252,8 @@ services:
     volumes:
       - ./scripts:/scripts
     entrypoint: [ "sh", "/scripts/register-debezium.sh" ]
+    networks:
+      - airflow_net
 
 
 
@@ -236,14 +272,57 @@ services:
       - AIRFLOW_API=http://airflow-webserver:8080/api/v1/dags
       - AIRFLOW_USER=admin
       - AIRFLOW_PASSWORD=admin
-      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}  # ✅ Injectée depuis .env
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}  #  Injectée depuis .env
     volumes:
       - ./kafka-listener:/app
       - ./.env:/app/.env                         
-    command: python /app/listener.py             
+    command: python /app/listener.py   
+    networks:
+      - airflow_net          
     env_file:
       - .env
+
+  # === SPARK
+  spark:
+    build:
+      context: .
+      dockerfile: Dockerfile.spark
+    image: custom-spark:delta 
+    container_name: spark
+    environment:
+      - SPARK_MODE=master
+      - SPARK_RPC_AUTHENTICATION_ENABLED=no
+      - SPARK_RPC_ENCRYPTION_ENABLED=no
+      - SPARK_LOCAL_DIRS=/tmp/spark
+    ports:
+      - "7077:7077"
+      - "8088:8080"
+    volumes:
+      - ./spark-jobs:/opt/spark-apps
+      - ./data:/opt/spark-data
+      - ./spark-data/export:/opt/spark-data/export
+    command: /opt/bitnami/scripts/spark/run.sh
+    networks:
+      - airflow_net
+
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    container_name: spark_worker
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark:7077
+    depends_on:
+      - spark
+    volumes:
+      - ./spark-jobs:/opt/spark-apps
+      - ./data:/opt/spark-data
+    networks:
+      - airflow_net
 
 volumes:
   postgres_data:
   grafana_data:
+
+networks:
+  airflow_net:
