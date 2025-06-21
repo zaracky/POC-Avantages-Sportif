@@ -21,6 +21,11 @@ Ce projet est le **Proof of Concept** pour une solution de **suivi d'activité s
 
 ---
 
+## Schéma de l'infrastructure
+![Schéma](images/schema.png)
+
+
+
 ## Stack technique
 
 | Composant       | Rôle                                                                 |
