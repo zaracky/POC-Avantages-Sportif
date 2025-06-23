@@ -20,11 +20,14 @@ consumer = KafkaConsumer(
 
 def trigger_dag(dag_id):
     url = f"{airflow_api}/{dag_id}/dagRuns"
-    try:
-        r = requests.post(url, auth=(user, pwd), json={})
-        print(f" DAG {dag_id} déclenché : {r.status_code}")
-    except requests.exceptions.RequestException as e:
-        print(f" Impossible de déclencher le DAG {dag_id} : {e}")
+    for attempt in range(5):
+        try:
+            r = requests.post(url, auth=(user, pwd), json={})
+            print(f"➡️ DAG {dag_id} déclenché : {r.status_code}")
+            return
+        except requests.exceptions.RequestException as e:
+            print(f" Tentative {attempt+1} échouée pour {dag_id} : {e}")
+            time.sleep(5)
 
 for msg in consumer:
     print(" Changement détecté dans activites.")
