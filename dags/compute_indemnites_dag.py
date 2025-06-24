@@ -1,3 +1,4 @@
+# === compute_indemnites_dag.py (modifié) ===
 from airflow import DAG
 from airflow.operators.python import PythonOperator
 from datetime import datetime
@@ -11,28 +12,37 @@ def compute_indemnites():
 
     query = """
         SELECT 
-            e.id_salarie,
+            a.id_salarie,
             r.nom,
             r.prenom,
-            e.distance_totale_m / 1000.0 AS distance_km,
-            e.nb_activites,
-            e.duree_totale_s,
-            e.est_eligible
-        FROM eligibilite e
-        JOIN rh r ON e.id_salarie = r.id_salarie
-        WHERE e.est_eligible = TRUE
+            a.date_debut AS date_activite,
+            a.type AS type_activite,
+            a.distance_m,
+            a.duree_s,
+            a.commentaire,
+            CASE 
+                WHEN e.est_eligible THEN TRUE
+                ELSE FALSE
+            END AS est_eligible,
+            CASE 
+                WHEN e.est_eligible THEN ROUND((a.distance_m / 1000.0) * 0.25, 2)
+                ELSE 0
+            END AS montant_rembourse
+        FROM activites a
+        JOIN rh r ON a.id_salarie = r.id_salarie
+        LEFT JOIN eligibilite e ON a.id_salarie = e.id_salarie
     """
     df = pd.read_sql(query, engine)
-    df["montant_rembourse"] = df["distance_km"] * TARIF_KM.round(2)
-    df.to_sql("indemnites", engine, if_exists="replace", index=False)
+    df.to_sql("activites_detaillees", engine, if_exists="replace", index=False)
 
 # Définition du DAG
 with DAG(
     dag_id="compute_indemnites",
-    description="Calculer les indemnités pour les salariés éligibles",
+    description="Calcule les indemnités pour chaque activité des salariés",
     start_date=datetime(2023, 1, 1),
     schedule_interval=None,
     catchup=False,
+    is_paused_upon_creation=False,
     tags=["indemnites", "remboursement"]
 ) as dag:
 
