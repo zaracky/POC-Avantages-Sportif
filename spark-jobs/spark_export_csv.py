@@ -9,19 +9,19 @@ spark = SparkSession.builder \
 
 # Chargement du Delta Lake
 try:
-    df = spark.read.format("delta").load("/opt/spark-data/delta/indemnites")
+    df = spark.read.format("delta").load("/opt/spark-data/delta/activites_detaillees")
     df.printSchema()
     df.show()
 except Exception as e:
-    print("❌ ERREUR chargement Delta :", str(e))
+    print(" ERREUR chargement Delta :", str(e))
     raise e
-
+    
 # Export CSV
 try:
     df.write \
         .mode("overwrite") \
         .option("header", "true") \
-        .csv("/opt/spark-data/export/indemnites_csv")
+        .csv("/opt/spark-data/export/activites_csv")
     print(" Export CSV terminé.")
 except Exception as e:
     print(" ERREUR export CSV :", str(e))
