@@ -11,10 +11,11 @@ spark = SparkSession.builder \
 df = spark.read \
     .format("jdbc") \
     .option("url", "jdbc:postgresql://postgres:5432/sportdb") \
-    .option("dbtable", "indemnites") \
+    .option("dbtable", "activites_detaillees") \
     .option("user", "user") \
     .option("password", "password") \
     .load()
+
 
 # Sauvegarde au format Delta avec gestion du schéma
 df.write \
@@ -22,6 +23,6 @@ df.write \
     .mode("overwrite") \
     .option("overwriteSchema", "true") \
     .option("mergeSchema", "true") \
-    .save("/opt/spark-data/delta/indemnites")
+    .save("/opt/spark-data/delta/activites_detaillees")
 
 spark.stop()
