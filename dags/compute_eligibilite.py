@@ -41,6 +41,7 @@ with DAG(
     start_date=datetime(2023, 1, 1),
     schedule_interval=None,  # désactivé pour démarrage manuel
     catchup=False,
+    is_paused_upon_creation=False,
     tags=["etl", "eligibilite"]
 ) as dag:
 
