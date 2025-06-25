@@ -29,18 +29,18 @@ def run_soda_and_notify():
     warn = "WARN" in result.stdout.upper()
 
     if not failed and not warn:
-        msg = "✅ Vérification des données : tout est OK ✅"
+        msg = " Vérification des données : tout est OK "
     elif failed:
-        msg = "❌ Des erreurs de qualité de données ont été détectées lors du scan."
+        msg = " Des erreurs de qualité de données ont été détectées lors du scan."
     else:
-        msg = "⚠️ Des avertissements ont été détectés dans les données."
+        msg = " Des avertissements ont été détectés dans les données."
 
     # Slack
     webhook = os.getenv("SLACK_WEBHOOK_URL")
     if webhook:
         requests.post(webhook, json={"text": msg})
     else:
-        print("⚠️ SLACK_WEBHOOK_URL non défini")
+        print(" SLACK_WEBHOOK_URL non défini")
 
 
 default_args = {
@@ -51,7 +51,7 @@ default_args = {
 with DAG(
     dag_id="validate_data_quality",
     default_args=default_args,
-    schedule_interval=None,
+    schedule_interval="@hourly",
     catchup=False,
     is_paused_upon_creation=False,
 ) as dag:
