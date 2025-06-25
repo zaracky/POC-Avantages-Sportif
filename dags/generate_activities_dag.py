@@ -19,10 +19,10 @@ def generer_activites():
     salaries = cursor.fetchall()
 
     if not salaries:
-        print("⚠️ Aucun salarié trouvé dans la table rh.")
+        print(" Aucun salarié trouvé dans la table rh.")
         return
 
-    for _ in range(600):
+    for _ in range(900):
         id_salarie = random.choice(salaries)[0]
         date_debut = datetime.now() - timedelta(days=random.randint(0, 365))
         type_activite = random.choice(ACTIVITES)
@@ -57,7 +57,7 @@ default_args = {
 with DAG(
     dag_id='generate_activities',
     default_args=default_args,
-    schedule_interval=None,
+    schedule_interval="@once",
     catchup=False,
     is_paused_upon_creation=False,
 ) as dag:
