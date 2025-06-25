@@ -1,6 +1,5 @@
 from pyspark.sql import SparkSession
 
-# Création d'une session Spark avec Delta Lake activé
 spark = SparkSession.builder \
     .appName("WriteToDeltaLake") \
     .config("spark.sql.extensions", "io.delta.sql.DeltaSparkSessionExtension") \
@@ -16,13 +15,17 @@ df = spark.read \
     .option("password", "password") \
     .load()
 
+# Sélection explicite des colonnes (évite les doublons inattendus)
+df_clean = df.select(
+    "id_salarie", "nom", "prenom", "date_activite", "type_activite",
+    "distance_m", "duree_s", "commentaire", "est_eligible", "montant_rembourse"
+)
 
-# Sauvegarde au format Delta avec gestion du schéma
-df.write \
+#  Écriture en mode overwrite complet
+df_clean.write \
     .format("delta") \
     .mode("overwrite") \
     .option("overwriteSchema", "true") \
-    .option("mergeSchema", "true") \
     .save("/opt/spark-data/delta/activites_detaillees")
 
 spark.stop()
