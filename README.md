@@ -22,7 +22,6 @@ Ce projet est le **Proof of Concept** pour une solution de **suivi d'activité s
 ---
 
 ## Schéma de l'infrastructure
-schema.png
 
 ![Schéma](images/schema.png)
 
