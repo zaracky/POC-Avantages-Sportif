@@ -35,13 +35,6 @@ def run_soda_and_notify():
     else:
         msg = " Des avertissements ont été détectés dans les données."
 
-    # Slack
-    webhook = os.getenv("SLACK_WEBHOOK_URL")
-    if webhook:
-        requests.post(webhook, json={"text": msg})
-    else:
-        print(" SLACK_WEBHOOK_URL non défini")
-
 
 default_args = {
     "owner": "airflow",

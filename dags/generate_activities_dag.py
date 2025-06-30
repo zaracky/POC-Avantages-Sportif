@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.operators.trigger_dagrun import TriggerDagRunOperator
 from datetime import datetime, timedelta
 import psycopg2
 import random
@@ -57,11 +58,26 @@ default_args = {
 with DAG(
     dag_id='generate_activities',
     default_args=default_args,
-    schedule_interval="@once",
+    schedule_interval=None,  
     catchup=False,
     is_paused_upon_creation=False,
 ) as dag:
+
     generate = PythonOperator(
         task_id='generate_activities',
         python_callable=generer_activites
     )
+
+    trigger_eligibilite = TriggerDagRunOperator(
+        task_id="trigger_eligibilite",
+        trigger_dag_id="generate_eligibilite",
+        wait_for_completion=True
+    )
+
+    trigger_indemnite = TriggerDagRunOperator(
+        task_id="trigger_indemnite",
+        trigger_dag_id="compute_indemnites",
+        wait_for_completion=False
+    )
+
+    generate >> trigger_eligibilite >> trigger_indemnite

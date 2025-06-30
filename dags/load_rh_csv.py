@@ -33,15 +33,5 @@ with DAG(
         trigger_dag_id='generate_activities'
     )
 
-    trigger_eligibilite = TriggerDagRunOperator(
-        task_id='trigger_generate_eligibilite',
-        trigger_dag_id='generate_eligibilite'
-    )
-
-    trigger_indemnites = TriggerDagRunOperator(
-        task_id='trigger_compute_indemnites',
-        trigger_dag_id='compute_indemnites'
-    )
-
     # Enchaînement des DAGs
-    load_task >> trigger_activities >> trigger_eligibilite >> trigger_indemnites
+    load_task >> trigger_activities 
